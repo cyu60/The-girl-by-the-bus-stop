@@ -16,7 +16,22 @@ main_story = {
                 "CharacterScenarioDescription": "Scenario Description",
                 "PlayerScenarioDescription": "Scenario Description",
                 "MaxTurnCount": 8,
-                "Actions": "If you feel uncomfortable in the conversation. \n\nSay WALK AWAY.",
+                "Actions": {
+                    "Description": "If you feel uncomfortable in the conversation. \n\nSay WALK AWAY. If you feel like the conversation is over, say CONVERSATION OVER",
+                    "Options": [
+                        {
+                            "Function": "WALK AWAY",
+                            "Label": "The girl walks away.",
+                            "IsFeedback": True
+                        },
+                        {
+                            "Function": "CONVERSATION OVER",
+                            "Label": "",
+                            "IsFeedback": True 
+                            # Need a way to send the message that it is just normal ending?
+                        }
+                    ]
+                    },
                 "FinalChoice": {
                     "Options": [
                         {

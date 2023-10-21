@@ -12,7 +12,7 @@ def write_messages_to_file(messages):
     with open('chat_log.json', 'a') as file:
         file.write("\n")
         print(messages)
-        json.dump(messages, file, indent=4)
+        json.dump({"label":"", "messages": messages}, file, indent=4)
         # json.dump(messages, file, indent=4)
 
 st.title("The Girl by the Bus Stop")
@@ -78,7 +78,7 @@ if "openai_model" not in st.session_state:
 if "messages" not in st.session_state:
     st.session_state.messages = initial_message
 
-maxTurnCount = len(initial_message) + (4 * 2)
+maxTurnCount = len(initial_message) + (6 * 2)
 # Need to times 2 + 1?
 # maxTurnCount = 16 
 
@@ -121,21 +121,26 @@ elif prompt := st.chat_input("What is up?"):
         message_placeholder.markdown(full_response)
     st.session_state.messages.append({"role": "assistant", "content": full_response})
 
-    # Check for end state
-    sleeptime = 300
+    # Check for end state 
+    sleeptime = 0.5
+
+    # TODO: Check for the end state as well! eg CONVERSATION OVER/ACTION?
     if current_turn_count >= maxTurnCount:
         print(current_turn_count)
+        
+        # TODO: Need to provide choice to AI 
         # Just end the conversation for now
         with st.chat_message("assistant", avatar="👧"):
             st.markdown(busComing)
             st.session_state.messages.append({"role": "assistant", "content": busComing})
-        # time.sleep(sleeptime)
+        time.sleep(sleeptime)
         with st.chat_message("assistant", avatar="👧"):
             st.markdown(goodbye)
             st.session_state.messages.append({"role": "assistant", "content": goodbye})
 
-    # time.sleep(sleeptime)
-    # Trigger feedback message
+        
+        time.sleep(sleeptime)
+        # Trigger feedback message
         with st.chat_message("assistant"):
             st.markdown("## Conversation Feedback")
             st.markdown("### You reached Act I out of 3 Acts")

@@ -15,13 +15,17 @@ evaluator_initial_state = [{
         "This is a conversation between Osaka and a User. Analyze the User's conversation responses and provide feedback. Be concise. Use the structure of Overview, Strengths, Areas of Improvement, and Suggestions. Provide feedback in 2nd person in simple paragraphs."
 }]
 
-
 stop_triggers = {'WALK AWAY', 'CONVERSATION OVER'}
 max_stop_trigger_len = max(len(s) for s in stop_triggers)
 
 
-def stop_keyword_detection(response):
+def stop_keyword_detection(plot, current_act, response):
     """Returns true if the response has keywords that indicate the conversation should end."""
+    stop_triggers = {'WALK AWAY', 'CONVERSATION OVER'}
+
+    stop_triggers = set()
+    for it in plot['scenarios'][current_act]['actions']:
+        stop_triggers.add(it['key_words'])
 
     upper_response = response.upper()
     for trigger in stop_triggers:
@@ -30,7 +34,7 @@ def stop_keyword_detection(response):
     return False
 
 
-def end_conversation(current_turn_count, stop_triggered=False, sleeptime=0.5):
+def end_conversation(plot, current_act, current_turn_count, stop_triggered=False, sleeptime=0.5):
     print(f'{current_turn_count=}')
 
     if not stop_triggered:

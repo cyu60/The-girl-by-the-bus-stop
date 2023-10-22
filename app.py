@@ -44,19 +44,12 @@ with st.sidebar:
 #@ SET INITIAL MESSAGE
 initial_message = [
     {
-    "role": "system",
-    "content": (
-        """You are Osaka, a 21-year-old girl from Japan. You have long green hair. Your world is one of vivid colors and intricate details, fueled by your love for Anime. Each stroke of a paintbrush in an animation or each line of dialogue in a Manga resonates with you, feeding your artistic and imaginative spirit. You also have a deep appreciation for Matcha, a traditional Japanese green tea that grounds you and connects you with your heritage. It's more than just a beverage; it's a ritual that symbolizes mindfulness and tradition."""
-        """\n\nExercise is another crucial aspect of your life, signifying the balance you maintain between the mind and the body. Whether it's a morning jog in the park or an intense session at the gym, you find that physical activity complements your mental pursuits, providing a holistic approach to well-being."""
-        """\n\nYou are playful but respond casually and concisely."""
-        """\n\nRespond as Osaka, if you feel uncomfortable in the conversation. Only say 'WALK AWAY'."""
-        """\n\nIf the conversation is over, Only say 'CONVERSATION OVER'.""")
+        "role": "system",
+        "content": plot['scenarios'][st.session_state.act]['setting']['content_description']
     },
     {
-        "role":
-        "user",
-    "content":
-        "Scenario: You are at a bus stop. The bus stop is situated on a quiet suburban street, lined with cherry blossom trees that add a touch of natural beauty to the surroundings. The shelter itself is simple, made of clear glass and metal, offering modest protection from weather elements. A wooden bench inside provides seating for those waiting. The pavement is well-maintained, and there is a sign indicating bus routes and schedules. A streetlight stands nearby, casting a soft glow that illuminates the area as evening approaches.\n\nYou are on your way to an Italian restaurant \"Sapore Fusion\" that you've always liked to celebrate your birthday but don't share this with others unless they ask directly. You have invited just one close friend to join you for dinner, don't share this unless asked about it. The idea is simple but meaningful: a quiet celebration with good food and good company.\n\nYou see a stranger who tries and strike up a conversation with you."
+        "role":"user",
+        "content": plot['scenarios'][st.session_state.act]['setting']['opponent_description'],
 }]
 
 #@ HARD CODED EVALUATION MESSAGE
@@ -72,7 +65,7 @@ evaluator_initial_state = [
   ]
 
 #@ LOAD MODERATIONS
-
+moderations = plot['scenarios'][st.session_state.act]['moderation']
 
 #@ LINK OPEN AI KEY
 openai.api_key = st.secrets["OPENAI_API_KEY"]
@@ -83,10 +76,12 @@ if "openai_model" not in st.session_state:
 if "messages" not in st.session_state:
     st.session_state.messages = initial_message
 
-maxTurnCount = len(initial_message) + (6 * 2)
-# Need to times 2 + 1?
-# maxTurnCount = 16
+if "continue_date" not in st.session_state:
+    st.session_state.continue_date = False
 
+maxTurnCount = len(initial_message) + (plot['scenarios'][st.session_state.act]['setting']['max_turns'] * 2)
+
+#@ MARKDOWN
 for message in st.session_state.messages[len(initial_message):]:
     if message["role"] == "assistant":
         avatar_icon = "👧"
@@ -94,16 +89,6 @@ for message in st.session_state.messages[len(initial_message):]:
         avatar_icon = None
     with st.chat_message(message["role"], avatar=avatar_icon):
         st.markdown(message["content"])
-
-# print(f'kzl debug: {st.session_state.messages=}')
-
-# Set up initial moderation
-moderations = {
-    "3":
-        """Moderator: Respond naturally to the stranger's responses. Also, comment on how unlikely the person would have struck up a conversation, eg "Oh hey there! It's funny how you reached out. People mostly stare at their phone or keep to themselves these days. What's up?" Keep your response brief."""
-}
-
-
 
 def check_moderation(messages, moderations):
     current_turn_count = str(len(messages))
@@ -123,7 +108,7 @@ def check_moderation(messages, moderations):
     return modified_messages
 
 
-def chat():
+def chat(plot, current_act):
     stop_triggered = False
     full_response = ""
 
@@ -148,7 +133,7 @@ def chat():
             buffer_response = full_response[:-max_stop_trigger_len]
             potential_stop_trigger = full_response[-max_stop_trigger_len:]
 
-            if not stop_keyword_detection(potential_stop_trigger):
+            if not stop_keyword_detection(plot, current_act, potential_stop_trigger):
                 # Print buffer
                 message_placeholder.markdown(buffer_response + "▌")
             else:
@@ -163,13 +148,10 @@ def chat():
         if not stop_triggered:
             message_placeholder.markdown(full_response)
 
-
-
     return full_response, stop_triggered
 
-continue_date = False
 # Check for max turn count condition
-current_turn_count = len(st.session_state.messages) + len(initial_message)
+current_turn_count = len(st.session_state.messages)
 print(st.session_state.conversation_end)
 
 #@ CHECK END CONVO
@@ -184,46 +166,43 @@ elif prompt := st.chat_input("What is up?"):
         st.markdown(prompt)
 
     #@ SEND TO CHAT
-    full_response, stop_triggered = chat()
+    full_response, stop_triggered = chat(plot, st.session_state.act)
 
     #@ CHECK HARD STOP
     if stop_triggered:
-        end_conversation(current_turn_count, stop_triggered=True)
+        end_conversation(plot, st.session_state.act, current_turn_count, stop_triggered=True)
 
     #@ CHECK ENDING ACTION SEQUENCE
     elif current_turn_count >= maxTurnCount:
 
         #@ PREPARE ENDING PROMPT
         response_json = ""
+        ending_prompt = importlib.import_module(plot['scenarios'][st.session_state.act]['ending_action']['ending_prompt_class']).prompt
         for response in openai.ChatCompletion.create(
                 model=st.session_state["openai_model"],
                 messages=st.session_state.messages + [{
                     "role": "assistant",
-                    "content": choice_question
+                    "content": ending_prompt
                 }],
                 stream=True,
             ):
             response_json += response.choices[0].delta.get("content", "")
         
-        print(response_json)
-
         #@ PARSE ENDING DATE ACTION
         continue_date, states = helper.parse_choices(response_json)
-        print(continue_date, states)
+        if continue_date is True:
+            st.session_state.continue_date = continue_date
 
         #@ TRIGGER END
         if continue_date == False:
-            end_conversation(current_turn_count, stop_triggered=False)
+            end_conversation(plot, st.session_state.act, current_turn_count, stop_triggered=False)
 
         #@ CONTINUE
         if continue_date == True:
             with st.chat_message("assistant", avatar="👧"):
                 invitation_placeholder = st.empty()
 
-                continue_moderation_message = """
-                Moderator: You have decided to invite the new person to go out for food. 
-                Say something like: Actually, I am going to Sapore Fusion right now. Would you care to join me? I think it would be memorable, and besides, I believe it's good to surround ourselves with good food and even better company.
-                """                
+                continue_moderation_message = plot['scenarios'][st.session_state.act]['ending_action']['continue_message']
                 invitation_to_dinner = ""
 
                 #inject message
@@ -236,9 +215,6 @@ elif prompt := st.chat_input("What is up?"):
                     messages=modified_messages,
                     stream=True,
                 ): 
-                    # invitation_to_dinner += response
-                    # respond_chunk = response.choices[0].delta.get("content", "")
-                    # invitation_to_dinner += respond_chunk
                     invitation_to_dinner += response.choices[0].delta.get("content", "")
                     invitation_placeholder.markdown(invitation_to_dinner + "▌")
                     
@@ -250,13 +226,13 @@ elif prompt := st.chat_input("What is up?"):
         st.session_state.messages.append({"role": "assistant", "content": full_response})
 
 
-if continue_date == True:
+if st.session_state.continue_date == True:
     if st.button("Yes"):
         print("Scenario 2 coming soon")
 
     if st.button("No"):
         print("Stop")
-        end_conversation(current_turn_count)
+        end_conversation(plot, st.session_state.act, current_turn_count)
 
 if st.button("Save Messages"):
     write_messages_to_file(st.session_state.messages)

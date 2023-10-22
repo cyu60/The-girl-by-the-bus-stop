@@ -3,6 +3,7 @@ import streamlit as st
 import base64
 import json
 import time
+import helper
 import os
 
 col1, col2 = st.columns(2)
@@ -199,7 +200,7 @@ elif prompt := st.chat_input("What is up?"):
         # TODO: Need to provide choice to AI
         # Just end the conversation for now
         # TODO: Ask for next scenario??
-        scene = ""
+        response_json = ""
         for response in openai.ChatCompletion.create(
                 model=st.session_state["openai_model"],
                 messages=[
@@ -212,12 +213,13 @@ elif prompt := st.chat_input("What is up?"):
                     "content": choice_question
                 }],
                 stream=True,
-        ):
-            scene += response.choices[0].delta.get("content", "")
-
-        print(f'{scene}')
-
-        # TODO:PLEASE PARSE HERE:
+            ):
+            response_json += response.choices[0].delta.get("content", "")
+        
+        print(response_json)
+        # TODO:PLEASE PARSE HERE: 
+        continue_date, states = helper.parse_choices(response_json)
+        print(continue_date, states)
 
         # feedback_message_placeholder.markdown(feedback_response + "▌")
         # feedback_message_placeholder.markdown(feedback_response)
@@ -228,10 +230,20 @@ elif prompt := st.chat_input("What is up?"):
         # TODO: IF YES
         # Inject yes-moderation message
         ###
-        """
-        Moderator: You have decided to invite the new person to go out for food.
-        Say something like: Actually, I am going to Sapore Fusion right now. Would you care to join me? I think it would be memorable, and besides, I believe it's good to surround ourselves with good food and even better company.
-        """
+
+        if continue_date == True:
+            continue_moderation_message = """
+            Moderator: You have decided to invite the new person to go out for food. 
+            Say something like: Actually, I am going to Sapore Fusion right now. Would you care to join me? I think it would be memorable, and besides, I believe it's good to surround ourselves with good food and even better company.
+            """
+            
+            #inject message
+            modified_messages=[
+                {"role": m["role"], "content": m["content"]}
+                for m in messages
+            ] + [{"role": "assistant", "content": continue_moderation_message}]
+            #restart the loop        
+
         ###
 
         # full_response, stop_triggered = chat()

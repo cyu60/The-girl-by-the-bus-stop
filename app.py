@@ -215,7 +215,7 @@ elif prompt := st.chat_input("What is up?"):
         ):
             scene += response.choices[0].delta.get("content", "")
 
-        print(scene)
+        print(f'{scene}')
 
         # TODO:PLEASE PARSE HERE:
 
@@ -234,7 +234,7 @@ elif prompt := st.chat_input("What is up?"):
         """
         ###
 
-        full_response, stop_triggered = chat()
+        # full_response, stop_triggered = chat()
 
     else:
         st.session_state.messages.append({"role": "assistant", "content": full_response})

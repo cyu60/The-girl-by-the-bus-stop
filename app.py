@@ -173,6 +173,7 @@ def chat():
     return full_response, stop_triggered
 
 
+continue_date = False
 # Check for max turn count condition
 current_turn_count = len(st.session_state.messages) + len(initial_message)
 print(st.session_state.conversation_end)
@@ -200,12 +201,7 @@ elif prompt := st.chat_input("What is up?"):
         response_json = ""
         for response in openai.ChatCompletion.create(
                 model=st.session_state["openai_model"],
-                messages=[
-                    {
-                        "role": "assistant",
-                        "content": json.dumps(st.session_state.messages)
-                    },
-                ] + [{
+                messages=st.session_state.messages + [{
                     "role": "assistant",
                     "content": choice_question
                 }],
@@ -240,31 +236,25 @@ elif prompt := st.chat_input("What is up?"):
                 invitation_to_dinner = ""
 
                 #inject message
-                for response in openai.ChatCompletion.create(
-                    model=st.session_state["openai_model"],
-                    messages=[
-                        {
-                            "role": "assistant",
-                            "content": json.dumps(st.session_state.messages)
-                        },
-                    ] + [{
+                modified_messages = st.session_state.messages + [{
                         "role": "assistant",
                         "content": continue_moderation_message
-                    }],
+                    }]
+                for response in openai.ChatCompletion.create(
+                    model=st.session_state["openai_model"],
+                    messages=modified_messages,
                     stream=True,
                 ): 
                     # invitation_to_dinner += response
                     # respond_chunk = response.choices[0].delta.get("content", "")
                     # invitation_to_dinner += respond_chunk
-                    print(invitation_to_dinner)
                     invitation_to_dinner += response.choices[0].delta.get("content", "")
                     invitation_placeholder.markdown(invitation_to_dinner + "▌")
                     
                 invitation_placeholder.markdown(invitation_to_dinner)
                 st.session_state.messages.append({"role": "assistant", "content": invitation_to_dinner})
 
-                # st.markdown(invitation_to_dinner)
-                #restart the loop        
+
 
         ###
 
@@ -272,6 +262,15 @@ elif prompt := st.chat_input("What is up?"):
 
     else:
         st.session_state.messages.append({"role": "assistant", "content": full_response})
+
+
+if continue_date == True:
+    if st.button("Yes"):
+        print("Scenario 2 coming soon")
+
+    if st.button("No"):
+        print("Stop")
+        end_conversation(current_turn_count)
 
 if st.button("Save Messages"):
     write_messages_to_file(st.session_state.messages)

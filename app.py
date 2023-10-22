@@ -39,13 +39,10 @@ with st.sidebar:
 initial_message = [{
     "role":
         "system",
-    "content":
-        ("""You are Osaka, a 21-year-old girl from Japan. You have long green hair. Your world is one of vivid colors and intricate details, fueled by your love for Anime. Each stroke of a paintbrush in an animation or each line of dialogue in a Manga resonates with you, feeding your artistic and imaginative spirit. You also have a deep appreciation for Matcha, a traditional Japanese green tea that grounds you and connects you with your heritage. It's more than just a beverage; it's a ritual that symbolizes mindfulness and tradition."""
-
+    "content": (
+        """You are Osaka, a 21-year-old girl from Japan. You have long green hair. Your world is one of vivid colors and intricate details, fueled by your love for Anime. Each stroke of a paintbrush in an animation or each line of dialogue in a Manga resonates with you, feeding your artistic and imaginative spirit. You also have a deep appreciation for Matcha, a traditional Japanese green tea that grounds you and connects you with your heritage. It's more than just a beverage; it's a ritual that symbolizes mindfulness and tradition."""
         """\n\nExercise is another crucial aspect of your life, signifying the balance you maintain between the mind and the body. Whether it's a morning jog in the park or an intense session at the gym, you find that physical activity complements your mental pursuits, providing a holistic approach to well-being."""
-
         """\n\nRespond as Osaka, if you feel uncomfortable in the conversation. Only say 'WALK AWAY'."""
-
         """\n\nIf the conversation is over, Only say 'CONVERSATION OVER'.""")
 }, {
     "role":
@@ -53,7 +50,6 @@ initial_message = [{
     "content":
         "Scenario: You are at a bus stop. The bus stop is situated on a quiet suburban street, lined with cherry blossom trees that add a touch of natural beauty to the surroundings. The shelter itself is simple, made of clear glass and metal, offering modest protection from weather elements. A wooden bench inside provides seating for those waiting. The pavement is well-maintained, and there is a sign indicating bus routes and schedules. A streetlight stands nearby, casting a soft glow that illuminates the area as evening approaches.\n\nYou are on your way to an Italian restaurant \"Sapore Fusion\" that you've always liked to celebrate your birthday but don't share this with others unless they ask directly. You have invited just one close friend to join you for dinner, don't share this unless asked about it. The idea is simple but meaningful: a quiet celebration with good food and good company.\n\nYou see a stranger who tries and strike up a conversation with you."
 }]
-
 
 # def autoplay_audio(file_path: str):
 #     with open(file_path, "rb") as f:
@@ -94,7 +90,10 @@ for message in st.session_state.messages[len(initial_message):]:
 # print(f'kzl debug: {st.session_state.messages=}')
 
 # Set up initial moderation
-moderations = {"3":"""Moderator: Respond naturally to the stranger's responses. Also, comment on how unlikely the person would have struck up a conversation, eg "Oh hey there! It's funny how you reached out. People mostly stare at their phone or keep to themselves these days. What's up?" Keep your response brief."""}
+moderations = {
+    "3":
+        """Moderator: Respond naturally to the stranger's responses. Also, comment on how unlikely the person would have struck up a conversation, eg "Oh hey there! It's funny how you reached out. People mostly stare at their phone or keep to themselves these days. What's up?" Keep your response brief."""
+}
 
 choice_question = """Moderator: Respond to the questions in JSON
 - Questions
@@ -112,50 +111,38 @@ choice_question = """Moderator: Respond to the questions in JSON
 }
 """
 
+
 def check_moderation(messages, moderations):
     current_turn_count = str(len(messages))
     if current_turn_count in moderations:
         moderator_comment = moderations[current_turn_count]
         print("Injection now", moderator_comment)
         # Add in moderation
-        modified_messages=[
-                {"role": m["role"], "content": m["content"]}
-                for m in messages
-        ] + [{"role": "assistant", "content": moderator_comment}]
+        modified_messages = [{
+            "role": m["role"],
+            "content": m["content"]
+        } for m in messages] + [{
+            "role": "assistant",
+            "content": moderator_comment
+        }]
     else:
-        modified_messages=[
-                {"role": m["role"], "content": m["content"]}
-                for m in messages
-        ]
+        modified_messages = [{"role": m["role"], "content": m["content"]} for m in messages]
     return modified_messages
 
 
-# Check for max turn count condition
-current_turn_count = len(st.session_state.messages) + len(initial_message)
-print(st.session_state.conversation_end)
-
-if st.session_state.conversation_end == True:
-    print(current_turn_count)
-    st.markdown("### Conversation over")
-
-# Normal message logic
-elif prompt := st.chat_input("What is up?"):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
+def chat():
     stop_triggered = False
+    full_response = ""
 
     with st.chat_message("assistant", avatar="👧"):
         message_placeholder = st.empty()
-        full_response = ""
 
         # CHECK FOR MODERATION
         modified_messages = check_moderation(st.session_state.messages, moderations)
         ###
 
         for response in openai.ChatCompletion.create(
-            model=st.session_state["openai_model"],
+                model=st.session_state["openai_model"],
                 messages=[{
                     "role": m["role"],
                     "content": m["content"]
@@ -185,11 +172,72 @@ elif prompt := st.chat_input("What is up?"):
         if not stop_triggered:
             message_placeholder.markdown(full_response)
 
-    if stop_triggered or current_turn_count >= maxTurnCount:
-        end_conversation(current_turn_count, stop_triggered=stop_triggered)
+    return full_response, stop_triggered
+
+
+# Check for max turn count condition
+current_turn_count = len(st.session_state.messages) + len(initial_message)
+print(st.session_state.conversation_end)
+
+if st.session_state.conversation_end == True:
+    print(current_turn_count)
+    st.markdown("### Conversation over")
+
+# Normal message logic
+elif prompt := st.chat_input("What is up?"):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    full_response, stop_triggered = chat()
+
+    if stop_triggered:
+        end_conversation(current_turn_count, stop_triggered=True)
+
+    elif current_turn_count >= maxTurnCount:
+
+        # TODO: Need to provide choice to AI
+        # Just end the conversation for now
+        # TODO: Ask for next scenario??
+        scene = ""
+        for response in openai.ChatCompletion.create(
+                model=st.session_state["openai_model"],
+                messages=[
+                    {
+                        "role": "assistant",
+                        "content": json.dumps(st.session_state.messages)
+                    },
+                ] + [{
+                    "role": "assistant",
+                    "content": choice_question
+                }],
+                stream=True,
+        ):
+            scene += response.choices[0].delta.get("content", "")
+
+        print(scene)
+
+        # TODO:PLEASE PARSE HERE:
+
+        # feedback_message_placeholder.markdown(feedback_response + "▌")
+        # feedback_message_placeholder.markdown(feedback_response)
+
+        # IF NO
+        end_conversation(current_turn_count, stop_triggered=False)
+
+        # TODO: IF YES
+        # Inject yes-moderation message
+        ###
+        """
+        Moderator: You have decided to invite the new person to go out for food.
+        Say something like: Actually, I am going to Sapore Fusion right now. Would you care to join me? I think it would be memorable, and besides, I believe it's good to surround ourselves with good food and even better company.
+        """
+        ###
+
+        full_response, stop_triggered = chat()
+
     else:
         st.session_state.messages.append({"role": "assistant", "content": full_response})
-
 
 if st.button("Save Messages"):
     write_messages_to_file(st.session_state.messages)

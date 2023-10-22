@@ -33,26 +33,6 @@ def stop_keyword_detection(response):
 def end_conversation(current_turn_count, stop_triggered=False, sleeptime=0.5):
     print(f'{current_turn_count=}')
 
-    # TODO: Need to provide choice to AI
-    # Just end the conversation for now
-    # TODO: Ask for next scenario??
-    scene = ""
-    for response in openai.ChatCompletion.create(
-            model=st.session_state["openai_model"],
-            messages= [
-                {"role": "assistant", "content": json.dumps(st.session_state.messages)},
-            ] + [{"role": "assistant", "content": choice_question}],
-            stream=True,
-        ):
-        scene += response.choices[0].delta.get("content", "")
-
-    print(scene)
-    # TODO:PLEASE PARSE HERE:
-
-    # feedback_message_placeholder.markdown(feedback_response + "▌")
-    # feedback_message_placeholder.markdown(feedback_response)
-
-    # IF NO
     if not stop_triggered:
         busComing = "Oh look! My bus is coming."
         goodbye = "Have a nice day! Goodbye."
@@ -66,15 +46,6 @@ def end_conversation(current_turn_count, stop_triggered=False, sleeptime=0.5):
         with st.chat_message("assistant", avatar="👧"):
             st.markdown(goodbye)
             st.session_state.messages.append({"role": "assistant", "content": goodbye})
-
-    # TODO: IF YES
-    # Inject yes-moderation message
-    ###
-    """
-    Moderator: You have decided to invite the new person to go out for food.
-    Say something like: Actually, I am going to Sapore Fusion right now. Would you care to join me? I think it would be memorable, and besides, I believe it's good to surround ourselves with good food and even better company.
-    """
-    ###
 
     time.sleep(sleeptime)
     # Trigger feedback message

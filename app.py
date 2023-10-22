@@ -13,8 +13,24 @@ story_name = 'girl_by_the_bus_stop'
 with open(f'stories/{story_name}/plot.json') as fp:
     plot = json.load(fp)
 
-#@ INITIALIZE GRID
-col1, col2 = st.columns(2)
+#@ INITIALIZE VARIABLES
+
+#@ LINK OPEN AI KEY
+openai.api_key = st.secrets["OPENAI_API_KEY"]
+
+if "openai_model" not in st.session_state:
+    st.session_state["openai_model"] = "gpt-4"
+
+if "continue_date" not in st.session_state:
+    st.session_state.continue_date = False
+
+if "conversation_end" not in st.session_state:
+    st.session_state.conversation_end = False
+
+if "act" not in st.session_state:
+    st.session_state.act = 'act_1'
+    # st.session_state.act = 'act_2'
+    st.session_state.act_position = 1
 
 #@ HELP FUNCTION TO WRITE TO JSON FILE
 def write_messages_to_file(messages):
@@ -24,22 +40,26 @@ def write_messages_to_file(messages):
         json.dump({"label":"", "messages": messages}, file, indent=4)
         # json.dump(messages, file, indent=4)
 
-#@ INIT VARIABLES
-busComing = "Oh look! My bus is coming."
-goodbye = "Have a nice day! Goodbye."
-st.session_state.conversation_end = False
-st.session_state.act = 'act_1'
-
+#@ HELP FUNCTION TO ADD OPPONENT_DESCRIPTION AT EACH NEW SCENARIO
+def add_scenario_to_messages(messages, opponent_description, position): # also labeled as opponent message
+    # print("\n\n###", messages,"\n\n###", opponent_description, "\n\n###", position)
+    messages.insert(position, {"role": "assistant", "content": opponent_description})
+    # Why is it returning none?
+    # print("\n\n###", messages)
+    return messages
+    
 #@ DRAW SIDE BAR
 with st.sidebar:
 
     #@ SET PAGE ASSETS
     st.title("The Girl by the Bus Stop")
-    st.title(plot['scenarios'][st.session_state.act]['setting']['name'])
+    # st.title(plot['scenarios'][st.session_state.act]['setting']['name'])
     st.audio(plot['scenarios'][st.session_state.act]['setting']['audio'])
     st.image(plot['scenarios'][st.session_state.act]['setting']['image'])
     st.markdown(plot['scenarios'][st.session_state.act]['setting']['description'])
-
+ 
+with st.chat_message("user"):
+    st.title(plot['scenarios'][st.session_state.act]['setting']['name'])
 
 #@ SET INITIAL MESSAGE
 initial_message = [
@@ -47,39 +67,21 @@ initial_message = [
         "role": "system",
         "content": plot['scenarios'][st.session_state.act]['setting']['content_description']
     },
-    {
-        "role":"user",
-        "content": plot['scenarios'][st.session_state.act]['setting']['opponent_description'],
-}]
+#     {
+#         "role":"user",
+#         "content": plot['scenarios'][st.session_state.act]['setting']['opponent_description'],
+# }
+]
 
-#@ HARD CODED EVALUATION MESSAGE
-evaluator_initial_state = [
-    {
-      "role": "system",
-      "content": "- You are someone who analyzes a conversation between two people and provides feedback is multifaceted, requiring a blend of skills in communication theory, psychology, and social dynamics. This involves identifying key points, transitions, and contentious moments, as well as assessing the overall flow and coherence of the dialogue. The analyst also evaluates the effectiveness of communication techniques used, such as questioning strategies, active listening, and persuasive arguments.\n- Here are some of the skills that you are looking for when analyzing conversations between two individuals:\n    - Analyzing the Spoken Word: One of your key responsibilities is to dissect the spoken language used by the participants. Pay attention to the choice of words, the structure of sentences, and the clarity of expressions. This will provide insights into the effectiveness of the communication and the comprehension level of both parties.\n    - Understanding Language Nuances: Beyond the literal meaning of words, delve into the nuances of language. Look for metaphors, idioms, or cultural references that may add layers of complexity or simplicity to the conversation. Understanding these subtleties can offer a deeper comprehension of the participants' perspectives.\n    - Building Rapport by Identifying Commonalities: Your role is not just to observe and analyze but also to enhance the conversation when possible. Identifying common interests, shared values, or mutual acquaintances can help build rapport between the participants, leading to more fruitful discussions.\n    - Providing Compliments: Complimenting participants on effective communication techniques or insightful points can foster a positive environment. This not only boosts morale but can also encourage more open and honest dialogue.\n    - Finding Collaborative Opportunities: Keep an eye out for moments where the participants can collaborate or agree on specific points. Highlighting these opportunities can help steer the conversation towards constructive outcomes and mitigate any potential conflicts.\n- Good conversations use a balance of active listening, articulate expression, and empathetic responses. Effective dialogue is not just about speaking but also about understanding and being understood. Your role is to identify how well these elements are being employed and offer guidance for improvement.\n- You provide concise feedback that offers constructive insights and actionable recommendations. This report should be balanced, highlighting both strengths and areas for improvement. It should also be tailored to the specific goals of the interaction, whether it is conflict resolution, information exchange, or decision-making.\n"
-    },
-    {
-      "role": "user",
-      "content": "This is a conversation between Osaka and a User. Analyze the User's conversation responses and provide feedback. Be concise. Use the structure of Overview, Strengths, Areas of Improvement, and Suggestions. Provide feedback in 2nd person in simple paragraphs."
-    }
-  ]
+# INITIAL MESSAGES
+if "messages" not in st.session_state:
+    st.session_state.messages = initial_message 
+    # + [plot['scenarios'][st.session_state.act]['preprompt']]
 
 #@ LOAD MODERATIONS
 moderations = plot['scenarios'][st.session_state.act]['moderation']
 
-#@ LINK OPEN AI KEY
-openai.api_key = st.secrets["OPENAI_API_KEY"]
-
-if "openai_model" not in st.session_state:
-    st.session_state["openai_model"] = "gpt-4"
-
-if "messages" not in st.session_state:
-    st.session_state.messages = initial_message
-
-if "continue_date" not in st.session_state:
-    st.session_state.continue_date = False
-
-maxTurnCount = len(initial_message) + (plot['scenarios'][st.session_state.act]['setting']['max_turns'] * 2)
+maxTurnCount = len(initial_message) + st.session_state.act_position + (plot['scenarios'][st.session_state.act]['setting']['max_turns'] * 2)
 
 #@ MARKDOWN
 for message in st.session_state.messages[len(initial_message):]:
@@ -91,10 +93,11 @@ for message in st.session_state.messages[len(initial_message):]:
         st.markdown(message["content"])
 
 def check_moderation(messages, moderations):
-    current_turn_count = str(len(messages))
-    if current_turn_count in moderations:
-        moderator_comment = moderations[current_turn_count]
-        print("Injection now", moderator_comment)
+    temp_turn_count = str(int((len(messages)-len(initial_message)-st.session_state.act_position)/2)) # TODO: NEED TO MODIFY!
+    # print("TEMP COUNT\n\n:", temp_turn_count, len(messages), len(initial_message))
+    if temp_turn_count in moderations:
+        moderator_comment = moderations[temp_turn_count]
+        # print("Injection now", moderator_comment)
         # Add in moderation
         modified_messages = [{
             "role": m["role"],
@@ -113,16 +116,19 @@ def chat(plot, current_act):
     full_response = ""
 
     with st.chat_message("assistant", avatar="👧"):
-        print(st.session_state.messages)
+        # print(st.session_state.messages)
         message_placeholder = st.empty()
 
         # CHECK FOR MODERATION
         modified_messages = check_moderation(st.session_state.messages, moderations)
-        ###
+        # print("\n\nModified messages:",modified_messages)
+        modified_messages_with_scenario = add_scenario_to_messages(modified_messages, plot['scenarios'][st.session_state.act]['setting']['opponent_description'], st.session_state.act_position)
+
+        # print("\n\nMessages:",modified_messages_with_scenario)
 
         for response in openai.ChatCompletion.create(
                 model=st.session_state["openai_model"],
-                messages=modified_messages,
+                messages=modified_messages_with_scenario,
                 stream=True,
         ):
             respond_chunk = response.choices[0].delta.get("content", "")
@@ -152,7 +158,7 @@ def chat(plot, current_act):
 
 # Check for max turn count condition
 current_turn_count = len(st.session_state.messages)
-print(st.session_state.conversation_end)
+# print(st.session_state.conversation_end)
 
 #@ CHECK END CONVO
 if st.session_state.conversation_end == True:
@@ -174,61 +180,110 @@ elif prompt := st.chat_input("What is up?"):
 
     #@ CHECK ENDING ACTION SEQUENCE
     elif current_turn_count >= maxTurnCount:
-
+        print("Starting ending action sequence\n\n\n\n\n")
         #@ PREPARE ENDING PROMPT
         response_json = ""
-        ending_prompt = importlib.import_module(plot['scenarios'][st.session_state.act]['ending_action']['ending_prompt_class']).prompt
-        for response in openai.ChatCompletion.create(
-                model=st.session_state["openai_model"],
-                messages=st.session_state.messages + [{
-                    "role": "assistant",
+        ending_prompt = plot['scenarios'][st.session_state.act]['ending_action']['ending_prompt'] 
+        # ending_prompt = importlib.import_module(plot['scenarios'][st.session_state.act]['ending_action']['ending_prompt_class']).prompt
+        # print(ending_prompt)
+        retry_count = 0
+        max_retries = 3
+
+        while retry_count < max_retries:
+            try:
+                # Initialize response_json
+                response_json = ""
+                
+                # Prepare messages with ending prompt
+                messages_with_ending_prompt = st.session_state.messages + [{
+                    "role": "system",
                     "content": ending_prompt
-                }],
-                stream=True,
-            ):
-            response_json += response.choices[0].delta.get("content", "")
-        
-        #@ PARSE ENDING DATE ACTION
-        continue_date, states = helper.parse_choices(response_json)
+                }]
+                
+                # Add scenario to messages
+                messages_with_ending_prompt_and_scenario = add_scenario_to_messages(
+                    messages_with_ending_prompt, 
+                    plot['scenarios'][st.session_state.act]['setting']['opponent_description'], 
+                    st.session_state.act_position
+                )
+                
+                # OpenAI ChatCompletion
+                for response in openai.ChatCompletion.create(
+                    model=st.session_state["openai_model"],
+                    messages=messages_with_ending_prompt_and_scenario,
+                    stream=True,
+                ):
+                    response_json += response.choices[0].delta.get("content", "")
+                
+                # Parse ending date action
+                print(response_json)
+                continue_date, states = helper.parse_choices(response_json)
+                
+                # If code reaches this point, break the loop
+                break
+                
+            except Exception as e:
+                retry_count += 1
+                print(f"An error occurred: {e}. Retrying {retry_count}/{max_retries}.")
+                
+            if retry_count >= max_retries:
+                print("Maximum retries reached. Exiting.")
+
         if continue_date is True:
             st.session_state.continue_date = continue_date
 
-        #@ TRIGGER END
+        # #@ TRIGGER END
         if continue_date == False:
             end_conversation(plot, st.session_state.act, current_turn_count, stop_triggered=False)
 
         #@ CONTINUE
         if continue_date == True:
+        # if True:
             with st.chat_message("assistant", avatar="👧"):
                 invitation_placeholder = st.empty()
 
                 continue_moderation_message = plot['scenarios'][st.session_state.act]['ending_action']['continue_message']
-                invitation_to_dinner = ""
+                invitation_to_next_act = ""
 
                 #inject message
                 modified_messages = st.session_state.messages + [{
                         "role": "assistant",
                         "content": continue_moderation_message
                     }]
+                modified_messages_with_scenario = add_scenario_to_messages(modified_messages, plot['scenarios'][st.session_state.act]['setting']['opponent_description'], st.session_state.act_position)
+
                 for response in openai.ChatCompletion.create(
                     model=st.session_state["openai_model"],
-                    messages=modified_messages,
+                    messages=modified_messages_with_scenario,
                     stream=True,
                 ): 
-                    invitation_to_dinner += response.choices[0].delta.get("content", "")
-                    invitation_placeholder.markdown(invitation_to_dinner + "▌")
+                    invitation_to_next_act += response.choices[0].delta.get("content", "")
+                    invitation_placeholder.markdown(invitation_to_next_act + "▌")
                     
-                invitation_placeholder.markdown(invitation_to_dinner)
-                st.session_state.messages.append({"role": "assistant", "content": invitation_to_dinner})
+                invitation_placeholder.markdown(invitation_to_next_act)
+                st.session_state.messages.append({"role": "assistant", "content": invitation_to_next_act})
 
     #@ TAKE STANDARD CONVERSATION TURNS
     else:
         st.session_state.messages.append({"role": "assistant", "content": full_response})
 
 
+# if True:
 if st.session_state.continue_date == True:
     if st.button("Yes"):
-        print("Scenario 2 coming soon")
+        # print("Scenario 2 coming soon")
+        # Change new act 
+        st.session_state.act = plot['scenarios'][st.session_state.act]['ending_action']['next_act']
+        with st.chat_message("user"):
+            st.title(plot['scenarios'][st.session_state.act]['setting']['name'])
+
+        # TODO: Need to inject in the start point
+        st.session_state.act_position = len(st.session_state.messages)
+
+        # Reset states (Other than messages)
+        st.session_state.continue_date = False
+        st.session_state.conversation_end = False
+        st.session_state.messages.append(plot['scenarios'][st.session_state.act]['preprompt'])
 
     if st.button("No"):
         print("Stop")

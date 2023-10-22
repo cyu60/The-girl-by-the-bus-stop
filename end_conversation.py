@@ -38,24 +38,30 @@ def end_conversation(plot, current_act, current_turn_count, stop_triggered=False
     print(f'{current_turn_count=}')
 
     if not stop_triggered:
-        busComing = "Oh look! My bus is coming."
-        goodbye = "Have a nice day! Goodbye."
+        # Iterate through the array and display messages
+        for message in plot['scenarios'][st.session_state.act]['ending_action']['standard_end_sequence']:
+            with st.chat_message(message["role"], avatar="👧"):
+                st.markdown(message["content"])
+                st.session_state.messages.append({"role": message["role"], "content": message["content"]})
+            time.sleep(sleeptime)
+        # # TODO: Need to figure out standard text for bouncing off
+        # busComing = "Oh look! My bus is coming."
+        # goodbye = "Have a nice day! Goodbye."
 
-        # TODO: Need to provide choice to AI
-        # Just end the conversation for now
-        with st.chat_message("assistant", avatar="👧"):
-            st.markdown(busComing)
-            st.session_state.messages.append({"role": "assistant", "content": busComing})
-        time.sleep(sleeptime)
-        with st.chat_message("assistant", avatar="👧"):
-            st.markdown(goodbye)
-            st.session_state.messages.append({"role": "assistant", "content": goodbye})
-
-    time.sleep(sleeptime)
+        # # TODO: Need to provide choice to AI
+        # # Just end the conversation for now
+        # with st.chat_message("assistant", avatar="👧"):
+        #     st.markdown(busComing)
+        #     st.session_state.messages.append({"role": "assistant", "content": busComing})
+        # time.sleep(sleeptime)
+        # with st.chat_message("assistant", avatar="👧"):
+        #     st.markdown(goodbye)
+        #     st.session_state.messages.append({"role": "assistant", "content": goodbye})
+        # time.sleep(sleeptime)
     # Trigger feedback message
     with st.chat_message("assistant"):
         st.markdown("## Conversation Feedback")
-        st.markdown("### You reached Act I out of 3 Acts")
+        st.markdown(f"### You reached {current_act.upper()} out of 3 Acts")
         feedback_message_placeholder = st.empty()
         feedback_response = ""
         for response in openai.ChatCompletion.create(
@@ -72,6 +78,6 @@ def end_conversation(plot, current_act, current_turn_count, stop_triggered=False
             feedback_message_placeholder.markdown(feedback_response + "▌")
         feedback_message_placeholder.markdown(feedback_response)
         # feedback_without_newline = feedback_message_placeholder.replace('\n', '')
-        st.session_state.messages.append({"role": "assistant", "content": feedback_response})
+        st.session_state.messages.append({"role": "assistant", "content": "## Conversation Feedback" + f"\n### You reached {current_act.upper()} out of 3 Acts\n" + feedback_response})
 
     st.session_state.conversation_end = True

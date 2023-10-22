@@ -51,7 +51,7 @@
                 }
             ],
             "ending_actions": {
-                "d":"d"
+                "ending_prompt":"stories.girl_by_the_bus_stop.prompt_strings"
             }
         },
         "act_2": {

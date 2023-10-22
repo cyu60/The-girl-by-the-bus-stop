@@ -3,6 +3,8 @@ import streamlit as st
 import base64
 import json
 import time
+import importlib
+
 import helper
 from end_conversation import stop_keyword_detection, end_conversation, max_stop_trigger_len
 
@@ -69,6 +71,9 @@ evaluator_initial_state = [
     }
   ]
 
+#@ LOAD MODERATIONS
+
+
 #@ LINK OPEN AI KEY
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
@@ -98,21 +103,6 @@ moderations = {
         """Moderator: Respond naturally to the stranger's responses. Also, comment on how unlikely the person would have struck up a conversation, eg "Oh hey there! It's funny how you reached out. People mostly stare at their phone or keep to themselves these days. What's up?" Keep your response brief."""
 }
 
-choice_question = """Moderator: Respond to the questions in JSON
-- Questions
-    - Is the conversation experience positive? (T/F)
-    - Are you curious to learn more about this person? (T/F)
-    - Did the person mention wanting to explore the city? (T/F)
-    - Did the person mention looking for dinner? (T/F)
-    - Did you mention about your birthday? (T/F)
-{
-        "PositiveConversation": <>,
-        "CuriousInIndividual": <>,
-        "KnowledgeOfOsakaBirthday": <>,
-        "PersonCityExplorationMentioned": <>,
-        "PersonDinnerIntentMentioned": <>
-}
-"""
 
 
 def check_moderation(messages, moderations):
@@ -182,26 +172,28 @@ continue_date = False
 current_turn_count = len(st.session_state.messages) + len(initial_message)
 print(st.session_state.conversation_end)
 
+#@ CHECK END CONVO
 if st.session_state.conversation_end == True:
     print(current_turn_count)
     st.markdown("### Conversation over")
 
-# Normal message logic
+#@ STANDARD LOGIC
 elif prompt := st.chat_input("What is up?"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
+    #@ SEND TO CHAT
     full_response, stop_triggered = chat()
 
+    #@ CHECK HARD STOP
     if stop_triggered:
         end_conversation(current_turn_count, stop_triggered=True)
 
+    #@ CHECK ENDING ACTION SEQUENCE
     elif current_turn_count >= maxTurnCount:
 
-        # TODO: Need to provide choice to AI
-        # Just end the conversation for now
-        # TODO: Ask for next scenario??
+        #@ PREPARE ENDING PROMPT
         response_json = ""
         for response in openai.ChatCompletion.create(
                 model=st.session_state["openai_model"],
@@ -214,21 +206,16 @@ elif prompt := st.chat_input("What is up?"):
             response_json += response.choices[0].delta.get("content", "")
         
         print(response_json)
-        # TODO:PLEASE PARSE HERE: 
+
+        #@ PARSE ENDING DATE ACTION
         continue_date, states = helper.parse_choices(response_json)
         print(continue_date, states)
 
-        # feedback_message_placeholder.markdown(feedback_response + "▌")
-        # feedback_message_placeholder.markdown(feedback_response)
-
-        # IF NO
+        #@ TRIGGER END
         if continue_date == False:
             end_conversation(current_turn_count, stop_triggered=False)
 
-        # TODO: IF YES
-        # Inject yes-moderation message
-        ###
-
+        #@ CONTINUE
         if continue_date == True:
             with st.chat_message("assistant", avatar="👧"):
                 invitation_placeholder = st.empty()
@@ -258,12 +245,7 @@ elif prompt := st.chat_input("What is up?"):
                 invitation_placeholder.markdown(invitation_to_dinner)
                 st.session_state.messages.append({"role": "assistant", "content": invitation_to_dinner})
 
-
-
-        ###
-
-        # full_response, stop_triggered = chat()
-
+    #@ TAKE STANDARD CONVERSATION TURNS
     else:
         st.session_state.messages.append({"role": "assistant", "content": full_response})
 

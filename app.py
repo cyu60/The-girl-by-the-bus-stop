@@ -91,6 +91,43 @@ for message in st.session_state.messages[len(initial_message):]:
         st.markdown(message["content"])
 
 
+# Set up initial moderation
+moderations = {"3":"""Moderator: Respond naturally to the stranger's responses. Also, comment on how unlikely the person would have struck up a conversation, eg "Oh hey there! It's funny how you reached out. People mostly stare at their phone or keep to themselves these days. What's up?" Keep your response brief."""}
+
+choice_question = """Moderator: Respond to the questions in JSON
+- Questions
+    - Is the conversation experience positive? (T/F)
+    - Are you curious to learn more about this person? (T/F)
+    - Did the person mention wanting to explore the city? (T/F)
+    - Did the person mention looking for dinner? (T/F)
+    - Did you mention about your birthday? (T/F)
+{
+        "PositiveConversation": <>,
+        "CuriousInIndividual": <>,
+        "KnowledgeOfOsakaBirthday": <>,
+        "PersonCityExplorationMentioned": <>,
+        "PersonDinnerIntentMentioned": <>
+}
+"""
+
+def check_moderation(messages, moderations):
+    current_turn_count = str(len(messages))
+    if current_turn_count in moderations:
+        moderator_comment = moderations[current_turn_count]
+        print("Injection now", moderator_comment)
+        # Add in moderation
+        modified_messages=[
+                {"role": m["role"], "content": m["content"]}
+                for m in messages
+        ] + [{"role": "assistant", "content": moderator_comment}]
+    else:
+        modified_messages=[
+                {"role": m["role"], "content": m["content"]}
+                for m in messages
+        ]
+    return modified_messages
+
+
 # Check for max turn count condition
 current_turn_count = len(st.session_state.messages) + len(initial_message)
 print(st.session_state.conversation_end)
@@ -108,12 +145,14 @@ elif prompt := st.chat_input("What is up?"):
     with st.chat_message("assistant", avatar="👧"):
         message_placeholder = st.empty()
         full_response = ""
+
+        # CHECK FOR MODERATION
+        modified_messages = check_moderation(st.session_state.messages, moderations)
+        ###
+
         for response in openai.ChatCompletion.create(
             model=st.session_state["openai_model"],
-            messages=[
-                {"role": m["role"], "content": m["content"]}
-                for m in st.session_state.messages
-            ],
+            messages=modified_messages,
             stream=True,
         ):
             full_response += response.choices[0].delta.get("content", "")
@@ -130,6 +169,24 @@ elif prompt := st.chat_input("What is up?"):
         
         # TODO: Need to provide choice to AI 
         # Just end the conversation for now
+        # TODO: Ask for next scenario??
+        scene = ""
+        for response in openai.ChatCompletion.create(
+                model=st.session_state["openai_model"],
+                messages= [
+                    {"role": "assistant", "content": json.dumps(st.session_state.messages)},
+                ] + [{"role": "assistant", "content": choice_question}],
+                stream=True,
+            ):
+            scene += response.choices[0].delta.get("content", "")
+        
+        print(scene)
+        # TODO:PLEASE PARSE HERE: 
+
+        # feedback_message_placeholder.markdown(feedback_response + "▌")
+        # feedback_message_placeholder.markdown(feedback_response)
+
+        # IF NO
         with st.chat_message("assistant", avatar="👧"):
             st.markdown(busComing)
             st.session_state.messages.append({"role": "assistant", "content": busComing})
@@ -137,6 +194,15 @@ elif prompt := st.chat_input("What is up?"):
         with st.chat_message("assistant", avatar="👧"):
             st.markdown(goodbye)
             st.session_state.messages.append({"role": "assistant", "content": goodbye})
+
+        # TODO: IF YES
+        # Inject yes-moderation message
+        ###
+        """
+        Moderator: You have decided to invite the new person to go out for food. 
+        Say something like: Actually, I am going to Sapore Fusion right now. Would you care to join me? I think it would be memorable, and besides, I believe it's good to surround ourselves with good food and even better company.
+        """
+        ###
 
         
         time.sleep(sleeptime)

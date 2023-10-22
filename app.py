@@ -144,10 +144,7 @@ def chat():
 
         for response in openai.ChatCompletion.create(
                 model=st.session_state["openai_model"],
-                messages=[{
-                    "role": m["role"],
-                    "content": m["content"]
-                } for m in st.session_state.messages],
+                messages=modified_messages,
                 stream=True,
         ):
             respond_chunk = response.choices[0].delta.get("content", "")
@@ -225,24 +222,49 @@ elif prompt := st.chat_input("What is up?"):
         # feedback_message_placeholder.markdown(feedback_response)
 
         # IF NO
-        end_conversation(current_turn_count, stop_triggered=False)
+        if continue_date == False:
+            end_conversation(current_turn_count, stop_triggered=False)
 
         # TODO: IF YES
         # Inject yes-moderation message
         ###
 
         if continue_date == True:
-            continue_moderation_message = """
-            Moderator: You have decided to invite the new person to go out for food. 
-            Say something like: Actually, I am going to Sapore Fusion right now. Would you care to join me? I think it would be memorable, and besides, I believe it's good to surround ourselves with good food and even better company.
-            """
-            
-            #inject message
-            modified_messages=[
-                {"role": m["role"], "content": m["content"]}
-                for m in messages
-            ] + [{"role": "assistant", "content": continue_moderation_message}]
-            #restart the loop        
+            with st.chat_message("assistant", avatar="👧"):
+                invitation_placeholder = st.empty()
+
+                continue_moderation_message = """
+                Moderator: You have decided to invite the new person to go out for food. 
+                Say something like: Actually, I am going to Sapore Fusion right now. Would you care to join me? I think it would be memorable, and besides, I believe it's good to surround ourselves with good food and even better company.
+                """                
+                invitation_to_dinner = ""
+
+                #inject message
+                for response in openai.ChatCompletion.create(
+                    model=st.session_state["openai_model"],
+                    messages=[
+                        {
+                            "role": "assistant",
+                            "content": json.dumps(st.session_state.messages)
+                        },
+                    ] + [{
+                        "role": "assistant",
+                        "content": continue_moderation_message
+                    }],
+                    stream=True,
+                ): 
+                    # invitation_to_dinner += response
+                    # respond_chunk = response.choices[0].delta.get("content", "")
+                    # invitation_to_dinner += respond_chunk
+                    print(invitation_to_dinner)
+                    invitation_to_dinner += response.choices[0].delta.get("content", "")
+                    invitation_placeholder.markdown(invitation_to_dinner + "▌")
+                    
+                invitation_placeholder.markdown(invitation_to_dinner)
+                st.session_state.messages.append({"role": "assistant", "content": invitation_to_dinner})
+
+                # st.markdown(invitation_to_dinner)
+                #restart the loop        
 
         ###
 

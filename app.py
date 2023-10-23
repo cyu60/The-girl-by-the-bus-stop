@@ -94,8 +94,10 @@ for message in st.session_state.messages[len(initial_message):]:
 
 def check_moderation(messages, moderations):
     temp_turn_count = str(int((len(messages)-len(initial_message)-st.session_state.act_position)/2)) # TODO: NEED TO MODIFY!
-    # print("TEMP COUNT\n\n:", temp_turn_count, len(messages), len(initial_message))
+    print("TEMP COUNT:", temp_turn_count, len(messages), len(initial_message),"\n\n")
     if temp_turn_count in moderations:
+        print("Found moderation:", moderations[temp_turn_count], "\n\n")
+
         moderator_comment = moderations[temp_turn_count]
         # print("Injection now", moderator_comment)
         # Add in moderation
@@ -166,7 +168,7 @@ if st.session_state.conversation_end == True:
     st.markdown("### Conversation over")
 
 #@ STANDARD LOGIC
-elif prompt := st.chat_input("What is up?"):
+elif prompt := st.chat_input("What is up?"): 
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
@@ -237,7 +239,7 @@ elif prompt := st.chat_input("What is up?"):
             end_conversation(plot, st.session_state.act, current_turn_count, stop_triggered=False)
 
         #@ CONTINUE
-        if continue_date == True:
+        if continue_date == True: 
         # if True:
             with st.chat_message("assistant", avatar="👧"):
                 invitation_placeholder = st.empty()
@@ -258,7 +260,7 @@ elif prompt := st.chat_input("What is up?"):
                     stream=True,
                 ): 
                     invitation_to_next_act += response.choices[0].delta.get("content", "")
-                    invitation_placeholder.markdown(invitation_to_next_act + "▌")
+                    invitation_placeholder.markdown(invitation_to_next_act + "▌") 
                     
                 invitation_placeholder.markdown(invitation_to_next_act)
                 st.session_state.messages.append({"role": "assistant", "content": invitation_to_next_act})

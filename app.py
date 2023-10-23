@@ -42,10 +42,7 @@ def write_messages_to_file(messages):
 
 #@ HELP FUNCTION TO ADD OPPONENT_DESCRIPTION AT EACH NEW SCENARIO
 def add_scenario_to_messages(messages, opponent_description, position): # also labeled as opponent message
-    # print("\n\n###", messages,"\n\n###", opponent_description, "\n\n###", position)
     messages.insert(position, {"role": "assistant", "content": opponent_description})
-    # Why is it returning none?
-    # print("\n\n###", messages)
     return messages
     
 #@ DRAW SIDE BAR
@@ -61,16 +58,12 @@ with st.sidebar:
 with st.chat_message("user"):
     st.title(plot['scenarios'][st.session_state.act]['setting']['name'])
 
-#@ SET INITIAL MESSAGE
+#@ SET INITIAL MESSAGE TODO: MIGHT WANT TO MAKE THIS DYNAMIC?
 initial_message = [
     {
         "role": "system",
         "content": plot['scenarios'][st.session_state.act]['setting']['content_description']
-    },
-#     {
-#         "role":"user",
-#         "content": plot['scenarios'][st.session_state.act]['setting']['opponent_description'],
-# }
+    }
 ]
 
 # INITIAL MESSAGES
@@ -125,7 +118,6 @@ def chat(plot, current_act):
         modified_messages = check_moderation(st.session_state.messages, moderations)
         # print("\n\nModified messages:",modified_messages)
         modified_messages_with_scenario = add_scenario_to_messages(modified_messages, plot['scenarios'][st.session_state.act]['setting']['opponent_description'], st.session_state.act_position)
-
         # print("\n\nMessages:",modified_messages_with_scenario)
 
         for response in openai.ChatCompletion.create(
@@ -135,6 +127,8 @@ def chat(plot, current_act):
         ):
             respond_chunk = response.choices[0].delta.get("content", "")
             full_response += respond_chunk
+
+            # TODO: Replace with Function detection?? #IMPORTANT! -- More flexibility
 
             # HACK: since we won't want to display the stop words,
             # we buffer the response and display only if there is no stop word
@@ -270,7 +264,6 @@ elif prompt := st.chat_input("What is up?"):
         st.session_state.messages.append({"role": "assistant", "content": full_response})
 
 
-# if True:
 if st.session_state.continue_date == True:
     if st.button("Yes"):
         # print("Scenario 2 coming soon")
@@ -279,7 +272,7 @@ if st.session_state.continue_date == True:
         with st.chat_message("user"):
             st.title(plot['scenarios'][st.session_state.act]['setting']['name'])
 
-        # TODO: Need to inject in the start point
+        # Need to inject in the start position for the new act
         st.session_state.act_position = len(st.session_state.messages)
 
         # Reset states (Other than messages)

@@ -44,20 +44,7 @@ def end_conversation(plot, current_act, current_turn_count, stop_triggered=False
                 st.markdown(message["content"])
                 st.session_state.messages.append({"role": message["role"], "content": message["content"]})
             time.sleep(sleeptime)
-        # # TODO: Need to figure out standard text for bouncing off
-        # busComing = "Oh look! My bus is coming."
-        # goodbye = "Have a nice day! Goodbye."
-
-        # # TODO: Need to provide choice to AI
-        # # Just end the conversation for now
-        # with st.chat_message("assistant", avatar="👧"):
-        #     st.markdown(busComing)
-        #     st.session_state.messages.append({"role": "assistant", "content": busComing})
-        # time.sleep(sleeptime)
-        # with st.chat_message("assistant", avatar="👧"):
-        #     st.markdown(goodbye)
-        #     st.session_state.messages.append({"role": "assistant", "content": goodbye})
-        # time.sleep(sleeptime)
+        
     # Trigger feedback message
     with st.chat_message("assistant"):
         st.markdown("## Conversation Feedback")

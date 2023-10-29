@@ -1,3 +1,4 @@
+from keyword_helper import keyword_detection
 import openai
 import streamlit as st
 import base64
@@ -28,16 +29,16 @@ if "conversation_end" not in st.session_state:
     st.session_state.conversation_end = False
 
 if "act" not in st.session_state:
+    # st.session_state.act = 'act_3'
     st.session_state.act = 'act_1'
-    # st.session_state.act = 'act_2'
     st.session_state.act_position = 1
 
 #@ HELP FUNCTION TO WRITE TO JSON FILE
-def write_messages_to_file(messages):
+def write_messages_to_file(messages, label=""):
     with open('chat_log.json', 'a') as file:
         file.write("\n")
         print(messages)
-        json.dump({"label":"", "messages": messages}, file, indent=4)
+        json.dump({"label":label, "messages": messages}, file, indent=4)
         # json.dump(messages, file, indent=4)
 
 #@ HELP FUNCTION TO ADD OPPONENT_DESCRIPTION AT EACH NEW SCENARIO
@@ -55,8 +56,6 @@ with st.sidebar:
     st.image(plot['scenarios'][st.session_state.act]['setting']['image'])
     st.markdown(plot['scenarios'][st.session_state.act]['setting']['description'])
  
-with st.chat_message("user"):
-    st.title(plot['scenarios'][st.session_state.act]['setting']['name'])
 
 #@ SET INITIAL MESSAGE TODO: MIGHT WANT TO MAKE THIS DYNAMIC?
 initial_message = [
@@ -68,16 +67,25 @@ initial_message = [
 
 # INITIAL MESSAGES
 if "messages" not in st.session_state:
-    st.session_state.messages = initial_message 
-    # + [plot['scenarios'][st.session_state.act]['preprompt']]
+    # st.session_state.messages = initial_message 
+    st.session_state.messages = initial_message + plot['scenarios'][st.session_state.act]['preprompt']
 
 #@ LOAD MODERATIONS
 moderations = plot['scenarios'][st.session_state.act]['moderation']
 
-maxTurnCount = len(initial_message) + st.session_state.act_position + (plot['scenarios'][st.session_state.act]['setting']['max_turns'] * 2)
+maxTurnCount = len(initial_message) + st.session_state.act_position + (plot['scenarios'][st.session_state.act]['setting']['max_turns'] * 2) - 1
 
-#@ MARKDOWN
-for message in st.session_state.messages[len(initial_message):]:
+#@ EMPTY STATE
+if len((st.session_state.messages[len(initial_message):])) == 0:
+    st.title(plot['scenarios'][st.session_state.act]['setting']['name'])
+    st.info("Feel free to chat as though you are chatting with a person", icon="😊")
+
+#@ MARKDOWN FOR MAIN CHAT INTERFACE
+for i, message in enumerate(st.session_state.messages[len(initial_message):]):    
+    # Inject the information about the new act
+    if i == st.session_state.act_position - len(initial_message):
+        st.title(plot['scenarios'][st.session_state.act]['setting']['name'])
+        
     if message["role"] == "assistant":
         avatar_icon = "👧"
     else:
@@ -86,13 +94,13 @@ for message in st.session_state.messages[len(initial_message):]:
         st.markdown(message["content"])
 
 def check_moderation(messages, moderations):
-    temp_turn_count = str(int((len(messages)-len(initial_message)-st.session_state.act_position)/2)) # TODO: NEED TO MODIFY!
+    temp_turn_count = str(int((len(messages)-len(initial_message)-st.session_state.act_position)/2) + 1) # TODO: NEED TO MODIFY!
     print("TEMP COUNT:", temp_turn_count, len(messages), len(initial_message),"\n\n")
     if temp_turn_count in moderations:
         print("Found moderation:", moderations[temp_turn_count], "\n\n")
 
         moderator_comment = moderations[temp_turn_count]
-        # print("Injection now", moderator_comment)
+        # print("Injection now", moderator_comment) 
         # Add in moderation
         modified_messages = [{
             "role": m["role"],
@@ -107,7 +115,7 @@ def check_moderation(messages, moderations):
 
 
 def chat(plot, current_act):
-    stop_triggered = False
+    keyword_triggered = False
     full_response = ""
 
     with st.chat_message("assistant", avatar="👧"):
@@ -133,24 +141,45 @@ def chat(plot, current_act):
             # HACK: since we won't want to display the stop words,
             # we buffer the response and display only if there is no stop word
             buffer_response = full_response[:-max_stop_trigger_len]
-            potential_stop_trigger = full_response[-max_stop_trigger_len:]
+            potential_keyword_trigger = full_response[-max_stop_trigger_len:]
 
-            if not stop_keyword_detection(plot, current_act, potential_stop_trigger):
+            # TODO: Finish new implementations with additional keywords
+            # keyword_detected, keyword = keyword_detection(plot, current_act, potential_keyword_trigger)
+            # if not keyword_detected:
+            #     message_placeholder.markdown(buffer_response + "▌")
+            # else:
+            #     # Extract function from keyword
+            #     print("Keyword triggered: ", keyword, "\n\n")
+
+            #     # Check to see the type of the trigger
+                
+            #         # If stop word, then trigger the end?
+            #         # else process as see fit -- eg show photo
+            #         # inject into the messages?
+
+            #     pass
+
+        
+
+            # Old implementation
+            if not stop_keyword_detection(plot, current_act, potential_keyword_trigger):
                 # Print buffer
                 message_placeholder.markdown(buffer_response + "▌")
             else:
                 # If detected stop word, no need to print it and directly
                 # end conversation
+                
+                # If type is key word detection is ending conversation
                 buffer_response = buffer_response or "(The girl looked at you and walked away.)"
                 message_placeholder.markdown(buffer_response)
-                stop_triggered = True
+                keyword_triggered = True
                 break
 
         # Print full message only if no stop word detected
-        if not stop_triggered:
+        if not keyword_triggered:
             message_placeholder.markdown(full_response)
 
-    return full_response, stop_triggered
+    return full_response, keyword_triggered
 
 # Check for max turn count condition
 current_turn_count = len(st.session_state.messages)
@@ -168,10 +197,11 @@ elif prompt := st.chat_input("What is up?"):
         st.markdown(prompt)
 
     #@ SEND TO CHAT
-    full_response, stop_triggered = chat(plot, st.session_state.act)
+    full_response, keyword_triggered = chat(plot, st.session_state.act)
+    print("TURN COUNT: ", current_turn_count, "\n\nMax count: ", maxTurnCount)
 
     #@ CHECK HARD STOP
-    if stop_triggered:
+    if keyword_triggered:
         end_conversation(plot, st.session_state.act, current_turn_count, stop_triggered=True)
 
     #@ CHECK ENDING ACTION SEQUENCE
@@ -196,7 +226,7 @@ elif prompt := st.chat_input("What is up?"):
                     "content": ending_prompt
                 }]
                 
-                # Add scenario to messages
+                # Add scenario to messages 
                 messages_with_ending_prompt_and_scenario = add_scenario_to_messages(
                     messages_with_ending_prompt, 
                     plot['scenarios'][st.session_state.act]['setting']['opponent_description'], 
@@ -212,7 +242,7 @@ elif prompt := st.chat_input("What is up?"):
                     response_json += response.choices[0].delta.get("content", "")
                 
                 # Parse ending date action
-                print(response_json)
+                print("\n\nResponse:", response_json)
                 continue_date, states = helper.parse_choices(response_json)
                 
                 # If code reaches this point, break the loop
@@ -269,8 +299,7 @@ if st.session_state.continue_date == True:
         # print("Scenario 2 coming soon")
         # Change new act 
         st.session_state.act = plot['scenarios'][st.session_state.act]['ending_action']['next_act']
-        with st.chat_message("user"):
-            st.title(plot['scenarios'][st.session_state.act]['setting']['name'])
+        st.title(plot['scenarios'][st.session_state.act]['setting']['name'])
 
         # Need to inject in the start position for the new act
         st.session_state.act_position = len(st.session_state.messages)
@@ -278,11 +307,41 @@ if st.session_state.continue_date == True:
         # Reset states (Other than messages)
         st.session_state.continue_date = False
         st.session_state.conversation_end = False
-        st.session_state.messages.append(plot['scenarios'][st.session_state.act]['preprompt'])
+        st.session_state.messages = st.session_state.messages + plot['scenarios'][st.session_state.act]['preprompt']
+
+        # Need to refresh current state
+        st.experimental_rerun()
 
     if st.button("No"):
         print("Stop")
         end_conversation(plot, st.session_state.act, current_turn_count)
+        # Need to refresh current state
+        st.experimental_rerun()
 
-if st.button("Save Messages"):
-    write_messages_to_file(st.session_state.messages)
+# if st.button("Save Messages"):
+#     write_messages_to_file(st.session_state.messages)
+if st.session_state.conversation_end == True:
+
+    # Allow people to say something different
+    if st.button("Say something different..."):
+        write_messages_to_file(st.session_state.messages, label=f"{st.session_state.act} - Reset last message - ")
+        st.session_state.messages = st.session_state.messages[:-2]
+        st.session_state.conversation_end = False
+
+        # Need to refresh current screen
+        st.experimental_rerun()
+    
+    # Should allow people to reset current Act
+    if st.button("Reset current Act"):
+        write_messages_to_file(st.session_state.messages, label=f"{st.session_state.act} - Reset -")
+        st.session_state.messages = st.session_state.messages[:st.session_state.act_position] + plot['scenarios'][st.session_state.act]['preprompt']
+        st.session_state.conversation_end = False
+        
+        # Need to refresh current screen
+        st.experimental_rerun()
+    
+    if st.button("Save Messages"):
+        write_messages_to_file(st.session_state.messages, label=f"{st.session_state.act} - Save -")
+        
+        # Need to refresh current screen
+        st.experimental_rerun()

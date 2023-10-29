@@ -1,4 +1,5 @@
 import json
+from helper import format_messages_with_labels
 import openai
 import time
 import streamlit as st
@@ -47,6 +48,7 @@ def end_conversation(plot, current_act, current_turn_count, stop_triggered=False
         
     # Trigger feedback message
     with st.chat_message("assistant"):
+        print(format_messages_with_labels(st.session_state.messages, "User", "Girl"))
         st.markdown("## Conversation Feedback")
         st.markdown(f"### You reached {current_act.upper()} out of 3 Acts")
         feedback_message_placeholder = st.empty()
@@ -56,7 +58,8 @@ def end_conversation(plot, current_act, current_turn_count, stop_triggered=False
                 messages=evaluator_initial_state + [
                     {
                         "role": "assistant",
-                        "content": json.dumps(st.session_state.messages)
+                        "content": format_messages_with_labels(st.session_state.messages, "User", "Girl")
+                        # "content": json.dumps(st.session_state.messages)
                     },
                 ],
                 stream=True,
@@ -64,6 +67,7 @@ def end_conversation(plot, current_act, current_turn_count, stop_triggered=False
             feedback_response += response.choices[0].delta.get("content", "")
             feedback_message_placeholder.markdown(feedback_response + "▌")
         feedback_message_placeholder.markdown(feedback_response)
+        st.info(plot['scenarios'][st.session_state.act]['ending_action']['tips'], icon="ℹ️")
         # feedback_without_newline = feedback_message_placeholder.replace('\n', '')
         st.session_state.messages.append({"role": "assistant", "content": "## Conversation Feedback" + f"\n### You reached {current_act.upper()} out of 3 Acts\n" + feedback_response})
 

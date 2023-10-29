@@ -38,6 +38,38 @@ def text_to_json_friendly_string(text: str) -> str:
     
     return modified_text
 
+# Modify the function to use custom variable names for the labels
+def format_messages_with_labels(messages, label_user="A", label_assistant="B"):
+    """Formats an array of messages into a string with custom labels.
+    
+    Parameters:
+        messages (list): A list of dictionaries containing the role and content of each message.
+        label_user (str): Custom label for the "user" role.
+        label_assistant (str): Custom label for the "assistant" role.
+    
+    Returns:
+        str: A formatted string containing the conversation.
+    """
+    
+    # Initialize an empty string to store the formatted conversation
+    formatted_conversation = ""
+    
+    # Iterate through the array of messages
+    for message in messages:
+        role = message["role"]
+        content = message["content"]
+        
+        # Append the role and content to the formatted conversation string
+        if role == "user":
+            formatted_conversation += f"{label_user}: {content}\n"
+        elif role == "assistant":
+            formatted_conversation += f"{label_assistant}: {content}\n"
+        elif role == "system":
+            # Optionally include system messages or ignore them
+            pass
+
+    return formatted_conversation
+
 if __name__ == '__main__':
     # text_to_convert = """"""
     text_to_convert = '''

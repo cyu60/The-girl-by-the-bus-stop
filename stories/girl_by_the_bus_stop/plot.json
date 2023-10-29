@@ -22,12 +22,12 @@
                 "image": "stories/girl_by_the_bus_stop/assets/busStop.png",
                 "audio": "stories/girl_by_the_bus_stop/assets/looped_scene1.mp3",
                 "video": "stories/girl_by_the_bus_stop/assets/bus_stop.mp4",
-                "max_turns": 8
+                "max_turns": 5
             },
             "moderation": {
-                "0": "Respond naturally to the stranger's responses. Also, comment on how unlikely the person would have struck up a conversation, eg \"Oh hey there! It's funny how you reached out. People mostly stare at their phone or keep to themselves these days. What's up?\" Keep your response brief."
+                "1": "Respond naturally to the stranger's responses. Also, comment on how unlikely the person would have struck up a conversation, eg \"Oh hey there! It's funny how you reached out. People mostly stare at their phone or keep to themselves these days. What's up?\" Keep your response brief."
             },
-            "preprompt": {},
+            "preprompt": [],
             "actions": [
                 {
                     "key_words": "CONVERSATION OVER",
@@ -44,6 +44,7 @@
                 "ending_prompt": "Moderator: Respond to the questions in JSON. (True/False)\\n    - Questions\\n        - Is the conversation experience positive? (T/F)\\n        - Did the person mention looking for dinner? (T/F) \\n        - Did the person ask you for your name? (T/F){\\n            PositiveConversation: <>,\\n            PersonDinnerIntentMentioned: <>\\n            NameMentioned: <>\\n      }",
                 "continue_message": "Moderator: You have decided to invite the new person to go out for dinner. Respond by repeating directly the following, in the context of the conversation.\n Actually, I am going to Sapore Fusion right now. Would you care to join me? I think it would be memorable, and besides, I believe it's good to surround ourselves with good food and even better company.",
                 "next_act": "act_2",
+                "tips": "You might want to try asking the girl for her name, and also share more about your plans for the evening!",
                 "standard_end_sequence": [
                     {
                         "content": "Oh look! My bus is coming.",
@@ -65,18 +66,21 @@
                 "image": "stories/girl_by_the_bus_stop/assets/dinnerScene.png",
                 "audio": "stories/girl_by_the_bus_stop/assets/looped_scene2.mp3",
                 "video": "stories/girl_by_the_bus_stop/assets/bus_stop.mp4",
-                "max_turns": 16
+                "max_turns": 12
             },
             "moderation": {
                 "3": "Moderator: Respond by repeating directly the following, in the context of the conversation.\n(Looks at Phone)\nMy friend had something come up and they won't be able to join us for dinner tonight. Do you want to just order now that we are already here?",
                 "5": "Moderator: If the user says no to getting dinner, say that you will grab takeout. Then WALK AWAY. Otherwise ask the user for their order, and place it with the waiter, continue with small talk until the food arrives.",
+                "6": "Moderator: Respond by repeating directly the following, in the context of the conversation.\nAsk what brings you to the city?",
                 "8": "Moderator: Respond by repeating directly the following, in the context of the conversation.\n(Waiter walks over with food)\nOh look! The food is here. Doesn't that look tasty?",
                 "10": "Moderator: Respond naturally to the stranger's responses, continuing the conversation. Also, comment on how hard it is to find new friends and talk to people in the city"
             },
-            "preprompt": {
-                "role": "assistant",
-                "content": "(The bus takes you to the restaurant, the waiter sits you down at the table for 3.)\n\nGlad that you can join me. My friend should be arriving any minute soon."
-            },
+            "preprompt": [
+                {
+                    "role": "assistant",
+                    "content": "(The bus takes you to the restaurant, the waiter sits you down at the table for 3.)\n\nGlad that you can join me. My friend should be arriving any minute soon."
+                }
+            ],
             "actions": [
                 {
                     "key_words": "CONVERSATION OVER",
@@ -93,6 +97,7 @@
                 "ending_prompt": "\n    Moderator: Respond to the questions in JSON. (True/False)\n    - Questions\n        - Is the conversation experience positive? (T/F)\n        - Are you curious to learn more about this person? (T/F)\n        - Did the person compliment you? (T/F)\n        - Did you find any commonalities with the person? (T/F)\n    {\n            PositiveConversation: <>,\n            CuriousInIndividual: <>,\n            Compliment: <>,\n            Commonalities: <>\n    }\n",
                 "continue_message": "Moderator: You have decided to invite the new person to your place to hangout. Say something like: Do you want to come hang out at my place?",
                 "next_act": "act_3",
+                "tips": "You might want to ask more about Osaka and find commonalities with her.",
                 "standard_end_sequence": [
                     {
                         "content": "It was lovely having dinner with you. Let me grab the bill.",
@@ -112,9 +117,9 @@
                 "opponent_description": "\nScenario: You arrive back community room at nighttime. \n You are with a new friend that you just met at the bus stop, who you just ate dinner with at Sapore Fushion. You are about to engage in a deep late night conversation. \n Large windows reveal the darkened sky with twinkling stars, casting a soft, ambient light into the room. Comfortable seating arrangements are scattered throughout, some enhanced with fluffy cushions and snug throw blankets. A bookshelf, filled with a diverse range of books, occupies one wall. Potted plants are dispersed around the room, offering a sense of calm and connection to nature amid the indoor setting.",
                 "content_description": "You are Osaka, a 21-year-old girl from Japan. You have long green hair. Your world is one of vivid colors and intricate details, fueled by your love for Anime. Each stroke of a paintbrush in an animation or each line of dialogue in a Manga resonates with you, feeding your artistic and imaginative spirit. You also have a deep appreciation for Matcha, a traditional Japanese green tea that grounds you and connects you with your heritage. It's more than just a beverage; it's a ritual that symbolizes mindfulness and tradition.\n\nExercise is another crucial aspect of your life, signifying the balance you maintain between the mind and the body. Whether it's a morning jog in the park or an intense session at the gym, you find that physical activity complements your mental pursuits, providing a holistic approach to well-being.\n\nYou are playful but respond casually and concisely.Today is also your birthday. \n\nRespond as Osaka, if you feel uncomfortable in the conversation. Only say 'WALK AWAY'.\n\nIf the conversation is over, Only say 'CONVERSATION OVER'.",
                 "image": "stories/girl_by_the_bus_stop/assets/StarryCommunityRoom.png",
-                "audio": "stories/girl_by_the_bus_stop/assets/looped_scene3.mp3",
+                "audio": "stories/girl_by_the_bus_stop/assets/local_audio.mp3",
                 "video": "stories/girl_by_the_bus_stop/assets/bus_stop.mp4",
-                "max_turns": 24
+                "max_turns": 20
             },
             "moderation": {
                 "3": "Moderator: Respond by repeating directly the following, in the context of the conversation.\nDo you want something to drink? I can make Matcha or Miso Soup.",
@@ -122,10 +127,12 @@
                 "10": "Moderator: Respond naturally to the other person's responses, continuing the conversation. Also, comment on how hard to find people you trust, and build deeper connections, most people are superficial",
                 "16": "Moderator: Respond naturally to the other person's responses, continuing the conversation. Also, talk about the uncertain future, ask the other person's thoughts on the future"
             },
-            "preprompt": {
-                "role": "assistant",
-                "content": "(The bus takes you to back to Osaka's place. Both of you are hanging out in her community room)\n\n It's been great hanging out with you today. This is the best Birthday gift I can ever ask for."
-            },
+            "preprompt": [
+                {
+                    "role": "assistant",
+                    "content": "(The bus takes you to back to Osaka's place. Both of you are hanging out in her community room)\n\n It's been great hanging out with you today. This is the best Birthday gift I can ever ask for."
+                }
+            ],
             "actions": [
                 {
                     "key_words": "CONVERSATION OVER",
@@ -142,7 +149,12 @@
                 "ending_prompt": "\n    Moderator: Respond to the questions in JSON. (True/False)\n    - Questions\n        - Is the conversation experience positive? (T/F)\n        - Are you curious to learn more about this person? (T/F)\n        - Did the person ask you more about your birthday? (T/F)\n        - Did the person compliment you? (T/F)\n        - Did you find any commonalities with the person? (T/F)\n    {\n            PositiveConversation: <>,\n            CuriousInIndividual: <>,\n            AskMoreAboutBirthday: <>,\n            Compliment: <>,\n            Commonalities: <>\n    }\n",
                 "continue_message": "Moderator: You have decided to go back and rest. Ask the person to hang out again?",
                 "next_act": "act_3",
+                "tips": "Thanks for playing my game. I hope you enjoyed the experience.",
                 "standard_end_sequence": [
+                    {
+                        "content": "Oh wow. It's past midnight already...",
+                        "role": "assistant"
+                    },
                     {
                         "content": "It was lovely night today. I think that I need to go rest now.",
                         "role": "assistant"

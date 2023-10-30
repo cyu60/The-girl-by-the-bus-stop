@@ -16,13 +16,20 @@ evaluator_initial_state = [{
         "This is a conversation between Osaka and a User. Analyze the User's conversation responses and provide feedback. Be concise. Use the structure of Overview, Strengths, Areas of Improvement, and Suggestions. Provide feedback in 2nd person in simple paragraphs."
 }]
 
+# TODO: add more possible keywords that are in the system prompt
+# This set should match the set in system.py as well as what we may provide
+# to the personas.
 stop_triggers = {'WALK AWAY', 'CONVERSATION OVER'}
-max_stop_trigger_len = max(len(s) for s in stop_triggers)
+# max_stop_trigger_len = max(len(s) for s in stop_triggers)
+max_stop_trigger_len = 20  # hardcoded to 20 chars for now
 
 
 def stop_keyword_detection(plot, current_act, response):
+    # TODO: alternatively, this function can return one of the stop triggers
+    # or None if none is found
+
     """Returns true if the response has keywords that indicate the conversation should end."""
-    stop_triggers = {'WALK AWAY', 'CONVERSATION OVER'}
+    # stop_triggers = {'WALK AWAY', 'CONVERSATION OVER'}
 
     stop_triggers = set()
     for it in plot['scenarios'][current_act]['actions']:
@@ -45,7 +52,7 @@ def end_conversation(plot, current_act, current_turn_count, stop_triggered=False
                 st.markdown(message["content"])
                 st.session_state.messages.append({"role": message["role"], "content": message["content"]})
             time.sleep(sleeptime)
-        
+
     # Trigger feedback message
     with st.chat_message("assistant"):
         print(format_messages_with_labels(st.session_state.messages, "User", "Girl"))

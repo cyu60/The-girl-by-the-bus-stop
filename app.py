@@ -6,6 +6,13 @@ import json
 import time
 import importlib
 
+# import argparse
+
+# parser = argparse.ArgumentParser()
+# parser.add_argument("--image_impl", type=str, choices=('random', 'dalle'), default='random')
+# args = parser.parse_args()
+
+
 import helper
 from end_conversation import stop_keyword_detection, end_conversation, max_stop_trigger_len
 
@@ -45,7 +52,7 @@ def write_messages_to_file(messages, label=""):
 def add_scenario_to_messages(messages, opponent_description, position): # also labeled as opponent message
     messages.insert(position, {"role": "assistant", "content": opponent_description})
     return messages
-    
+
 #@ DRAW SIDE BAR
 with st.sidebar:
 
@@ -55,7 +62,7 @@ with st.sidebar:
     st.audio(plot['scenarios'][st.session_state.act]['setting']['audio'])
     st.image(plot['scenarios'][st.session_state.act]['setting']['image'])
     st.markdown(plot['scenarios'][st.session_state.act]['setting']['description'])
- 
+
 
 #@ SET INITIAL MESSAGE TODO: MIGHT WANT TO MAKE THIS DYNAMIC?
 initial_message = [
@@ -67,7 +74,7 @@ initial_message = [
 
 # INITIAL MESSAGES
 if "messages" not in st.session_state:
-    # st.session_state.messages = initial_message 
+    # st.session_state.messages = initial_message
     st.session_state.messages = initial_message + plot['scenarios'][st.session_state.act]['preprompt']
 
 #@ LOAD MODERATIONS
@@ -81,11 +88,11 @@ if len((st.session_state.messages[len(initial_message):])) == 0:
     st.info("Feel free to chat as though you are chatting with a person", icon="😊")
 
 #@ MARKDOWN FOR MAIN CHAT INTERFACE
-for i, message in enumerate(st.session_state.messages[len(initial_message):]):    
+for i, message in enumerate(st.session_state.messages[len(initial_message):]):
     # Inject the information about the new act
     if i == st.session_state.act_position - len(initial_message):
         st.title(plot['scenarios'][st.session_state.act]['setting']['name'])
-        
+
     if message["role"] == "assistant":
         avatar_icon = "👧"
     else:
@@ -100,7 +107,7 @@ def check_moderation(messages, moderations):
         print("Found moderation:", moderations[temp_turn_count], "\n\n")
 
         moderator_comment = moderations[temp_turn_count]
-        # print("Injection now", moderator_comment) 
+        # print("Injection now", moderator_comment)
         # Add in moderation
         modified_messages = [{
             "role": m["role"],
@@ -152,14 +159,42 @@ def chat(plot, current_act):
             #     print("Keyword triggered: ", keyword, "\n\n")
 
             #     # Check to see the type of the trigger
-                
+
             #         # If stop word, then trigger the end?
             #         # else process as see fit -- eg show photo
             #         # inject into the messages?
 
             #     pass
 
-        
+
+            # TODO: Main approach to action trigger
+            # - The above `keyword_detection` essentially examines the trailing
+            #   tokens of the agent's current response. This means that as long as
+            #   we prompt the agent correctly, they should be able to perform
+            #   actions by appending keywords to the end of their response.
+            # - `keyword_detection` would look at the trailing tokens and see if
+            #   any of the keywords are found, and if so, return the keyword.
+            # - The keyword can then be used to trigger the action, using a simple
+            #   switch-case logic (see below). The action would return whatever
+            #   we would like to append to the response, or do (e.g. calling twillo
+            #   to send a text message.
+            # - Since the agent doesn't know the specific implementations of the actions
+            #   (it only knows about actions like "SHOW IMAGE"), as developers
+            #   we can enable swapping out of the implementations of the actions
+
+            # if keyword == 'show_image':
+            #     image = show_image(impl=args.image_impl)
+            #     buffer_response.append(pil.image(image))
+
+            # # TODOs:
+            # 1. Setup system prompt to include a list of trigger words
+            # 2. Factor out the system prompt, and have name placeholders (so that at different acts, you can swap out the character
+            #    names and the character behavior is smiliarily consistent).
+            # 3. However, for each act, the character may have more or less actions that are possible; this we can specify
+            #    with a act-specific list of actions to be appended to the system prompt.
+            # 4. As long as the system prompt is consistent and have good format, the agent should know the list of
+            #    possible actions, and we'll just do a factory method to trigget the different actions
+
 
             # Old implementation
             if not stop_keyword_detection(plot, current_act, potential_keyword_trigger):
@@ -168,7 +203,7 @@ def chat(plot, current_act):
             else:
                 # If detected stop word, no need to print it and directly
                 # end conversation
-                
+
                 # If type is key word detection is ending conversation
                 buffer_response = buffer_response or "(The girl looked at you and walked away.)"
                 message_placeholder.markdown(buffer_response)
@@ -191,7 +226,7 @@ if st.session_state.conversation_end == True:
     st.markdown("### Conversation over")
 
 #@ STANDARD LOGIC
-elif prompt := st.chat_input("What is up?"): 
+elif prompt := st.chat_input("What is up?"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
@@ -209,7 +244,7 @@ elif prompt := st.chat_input("What is up?"):
         print("Starting ending action sequence\n\n\n\n\n")
         #@ PREPARE ENDING PROMPT
         response_json = ""
-        ending_prompt = plot['scenarios'][st.session_state.act]['ending_action']['ending_prompt'] 
+        ending_prompt = plot['scenarios'][st.session_state.act]['ending_action']['ending_prompt']
         # ending_prompt = importlib.import_module(plot['scenarios'][st.session_state.act]['ending_action']['ending_prompt_class']).prompt
         # print(ending_prompt)
         retry_count = 0
@@ -219,20 +254,20 @@ elif prompt := st.chat_input("What is up?"):
             try:
                 # Initialize response_json
                 response_json = ""
-                
+
                 # Prepare messages with ending prompt
                 messages_with_ending_prompt = st.session_state.messages + [{
                     "role": "system",
                     "content": ending_prompt
                 }]
-                
-                # Add scenario to messages 
+
+                # Add scenario to messages
                 messages_with_ending_prompt_and_scenario = add_scenario_to_messages(
-                    messages_with_ending_prompt, 
-                    plot['scenarios'][st.session_state.act]['setting']['opponent_description'], 
+                    messages_with_ending_prompt,
+                    plot['scenarios'][st.session_state.act]['setting']['opponent_description'],
                     st.session_state.act_position
                 )
-                
+
                 # OpenAI ChatCompletion
                 for response in openai.ChatCompletion.create(
                     model=st.session_state["openai_model"],
@@ -240,18 +275,18 @@ elif prompt := st.chat_input("What is up?"):
                     stream=True,
                 ):
                     response_json += response.choices[0].delta.get("content", "")
-                
+
                 # Parse ending date action
                 print("\n\nResponse:", response_json)
                 continue_date, states = helper.parse_choices(response_json)
-                
+
                 # If code reaches this point, break the loop
                 break
-                
+
             except Exception as e:
                 retry_count += 1
                 print(f"An error occurred: {e}. Retrying {retry_count}/{max_retries}.")
-                
+
             if retry_count >= max_retries:
                 print("Maximum retries reached. Exiting.")
 
@@ -263,7 +298,7 @@ elif prompt := st.chat_input("What is up?"):
             end_conversation(plot, st.session_state.act, current_turn_count, stop_triggered=False)
 
         #@ CONTINUE
-        if continue_date == True: 
+        if continue_date == True:
         # if True:
             with st.chat_message("assistant", avatar="👧"):
                 invitation_placeholder = st.empty()
@@ -282,10 +317,10 @@ elif prompt := st.chat_input("What is up?"):
                     model=st.session_state["openai_model"],
                     messages=modified_messages_with_scenario,
                     stream=True,
-                ): 
+                ):
                     invitation_to_next_act += response.choices[0].delta.get("content", "")
-                    invitation_placeholder.markdown(invitation_to_next_act + "▌") 
-                    
+                    invitation_placeholder.markdown(invitation_to_next_act + "▌")
+
                 invitation_placeholder.markdown(invitation_to_next_act)
                 st.session_state.messages.append({"role": "assistant", "content": invitation_to_next_act})
 
@@ -297,7 +332,7 @@ elif prompt := st.chat_input("What is up?"):
 if st.session_state.continue_date == True:
     if st.button("Yes"):
         # print("Scenario 2 coming soon")
-        # Change new act 
+        # Change new act
         st.session_state.act = plot['scenarios'][st.session_state.act]['ending_action']['next_act']
         st.title(plot['scenarios'][st.session_state.act]['setting']['name'])
 
@@ -330,18 +365,18 @@ if st.session_state.conversation_end == True:
 
         # Need to refresh current screen
         st.experimental_rerun()
-    
+
     # Should allow people to reset current Act
     if st.button("Reset current Act"):
         write_messages_to_file(st.session_state.messages, label=f"{st.session_state.act} - Reset -")
         st.session_state.messages = st.session_state.messages[:st.session_state.act_position] + plot['scenarios'][st.session_state.act]['preprompt']
         st.session_state.conversation_end = False
-        
+
         # Need to refresh current screen
         st.experimental_rerun()
-    
+
     if st.button("Save Messages"):
         write_messages_to_file(st.session_state.messages, label=f"{st.session_state.act} - Save -")
-        
+
         # Need to refresh current screen
         st.experimental_rerun()

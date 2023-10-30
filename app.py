@@ -360,7 +360,10 @@ if st.session_state.conversation_end == True:
     # Allow people to say something different
     if st.button("Say something different..."):
         write_messages_to_file(st.session_state.messages, label=f"{st.session_state.act} - Reset last message - ")
-        st.session_state.messages = st.session_state.messages[:-2]
+        while st.session_state.messages and st.session_state.messages[-1]['role'] != 'user':
+            st.session_state.messages.pop()
+        if st.session_state.messages:
+            st.session_state.messages.pop()
         st.session_state.conversation_end = False
 
         # Need to refresh current screen

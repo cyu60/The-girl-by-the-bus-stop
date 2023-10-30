@@ -350,6 +350,7 @@ if st.session_state.continue_date == True:
     if st.button("No"):
         print("Stop")
         end_conversation(plot, st.session_state.act, current_turn_count)
+        st.session_state.conversation_end = True
         # Need to refresh current state
         st.experimental_rerun()
 

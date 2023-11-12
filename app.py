@@ -5,6 +5,7 @@ import base64
 import json
 import time
 import importlib
+from helper import format_messages_with_labels
 
 # import argparse
 
@@ -14,7 +15,7 @@ import importlib
 
 
 import helper
-from end_conversation import stop_keyword_detection, end_conversation, max_stop_trigger_len
+from end_conversation import stop_keyword_detection, end_conversation, max_stop_trigger_len, generate_feedback
 
 #@ IMPORTANT GLOBAL VARIABLES
 story_name = 'girl_by_the_bus_stop'
@@ -37,6 +38,9 @@ if "continue_date" not in st.session_state:
 
 if "conversation_end" not in st.session_state:
     st.session_state.conversation_end = False
+
+if "get_feedback" not in st.session_state:
+    st.session_state.get_feedback = False
 
 if "act" not in st.session_state:
     # st.session_state.act = 'act_3'
@@ -362,8 +366,16 @@ if st.session_state.continue_date == True:
 #     write_messages_to_file(st.session_state.messages)
 if st.session_state.conversation_end == True:
 
+    # Trigger feedback message
+    if st.session_state.get_feedback == False:
+        if st.button("Get detailed feedback"):
+            generate_feedback(st.session_state.act)
+            st.session_state.get_feedback = True
+            # Need to refresh current screen
+            st.experimental_rerun()
+
     # Allow people to say something different
-    if st.button("Say something different..."):
+    if st.button("Reset last message"):
         write_messages_to_file(st.session_state.messages, label=f"{st.session_state.act} - Reset last message - ")
         while st.session_state.messages and st.session_state.messages[-1]['role'] != 'user':
             st.session_state.messages.pop()
@@ -383,6 +395,7 @@ if st.session_state.conversation_end == True:
         # Need to refresh current screen
         st.experimental_rerun()
 
+    
     if st.button("Save Messages"):
         write_messages_to_file(st.session_state.messages, label=f"{st.session_state.act} - Save -")
 

@@ -56,11 +56,18 @@ def end_conversation(plot, current_act, current_turn_count, stop_triggered=False
                 st.session_state.messages.append({"role": message["role"], "content": message["content"]})
             time.sleep(sleeptime)
 
+    st.markdown(f"### You reached {current_act.upper()} out of 3 Acts")
+    st.markdown(f"Do you want to explore more of the story?")
+    st.markdown(f"Feel free to reset the act to try again, or reset the last message if you want to say something different")
+    st.info(plot['scenarios'][st.session_state.act]['ending_action']['tips'], icon="ℹ️")
+
+    st.session_state.conversation_end = True
+
+def generate_feedback(current_act):
     # Trigger feedback message
     with st.chat_message("assistant"):
         print(format_messages_with_labels(st.session_state.messages, "User", "Girl"))
         st.markdown("## Conversation Feedback")
-        st.markdown(f"### You reached {current_act.upper()} out of 3 Acts")
         feedback_message_placeholder = st.empty()
         feedback_response = ""
         for response in client.chat.completions.create(
@@ -77,8 +84,6 @@ def end_conversation(plot, current_act, current_turn_count, stop_triggered=False
             feedback_response += response.choices[0].delta.content or ""
             feedback_message_placeholder.markdown(feedback_response + "▌")
         feedback_message_placeholder.markdown(feedback_response)
-        st.info(plot['scenarios'][st.session_state.act]['ending_action']['tips'], icon="ℹ️")
+        
         # feedback_without_newline = feedback_message_placeholder.replace('\n', '')
         st.session_state.messages.append({"role": "assistant", "content": "## Conversation Feedback" + f"\n### You reached {current_act.upper()} out of 3 Acts\n" + feedback_response})
-
-    st.session_state.conversation_end = True

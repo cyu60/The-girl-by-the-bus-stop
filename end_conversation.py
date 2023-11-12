@@ -4,6 +4,9 @@ import openai
 import time
 import streamlit as st
 
+# Initialize the OpenAI client with the API key
+client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
 evaluator_initial_state = [{
     "role":
         "system",
@@ -60,7 +63,7 @@ def end_conversation(plot, current_act, current_turn_count, stop_triggered=False
         st.markdown(f"### You reached {current_act.upper()} out of 3 Acts")
         feedback_message_placeholder = st.empty()
         feedback_response = ""
-        for response in openai.ChatCompletion.create(
+        for response in client.chat.completions.create(
                 model=st.session_state["openai_model"],
                 messages=evaluator_initial_state + [
                     {
@@ -71,7 +74,7 @@ def end_conversation(plot, current_act, current_turn_count, stop_triggered=False
                 ],
                 stream=True,
         ):
-            feedback_response += response.choices[0].delta.get("content", "")
+            feedback_response += response.choices[0].delta.content or ""
             feedback_message_placeholder.markdown(feedback_response + "▌")
         feedback_message_placeholder.markdown(feedback_response)
         st.info(plot['scenarios'][st.session_state.act]['ending_action']['tips'], icon="ℹ️")

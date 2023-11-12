@@ -24,7 +24,10 @@ with open(f'stories/{story_name}/plot.json') as fp:
 #@ INITIALIZE VARIABLES
 
 #@ LINK OPEN AI KEY
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+# openai.api_key = st.secrets["OPENAI_API_KEY"]
+
+# Initialize the OpenAI client with the API key
+client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 if "openai_model" not in st.session_state:
     st.session_state["openai_model"] = "gpt-4"
@@ -135,12 +138,12 @@ def chat(plot, current_act):
         modified_messages_with_scenario = add_scenario_to_messages(modified_messages, plot['scenarios'][st.session_state.act]['setting']['opponent_description'], st.session_state.act_position)
         # print("\n\nMessages:",modified_messages_with_scenario)
 
-        for response in openai.ChatCompletion.create(
+        for response in client.chat.completions.create(
                 model=st.session_state["openai_model"],
                 messages=modified_messages_with_scenario,
                 stream=True,
         ):
-            respond_chunk = response.choices[0].delta.get("content", "")
+            respond_chunk = response.choices[0].delta.content or ""
             full_response += respond_chunk
 
             # TODO: Replace with Function detection?? #IMPORTANT! -- More flexibility
@@ -269,12 +272,12 @@ elif prompt := st.chat_input("What is up?"):
                 )
 
                 # OpenAI ChatCompletion
-                for response in openai.ChatCompletion.create(
+                for response in client.chat.completions.create(
                     model=st.session_state["openai_model"],
                     messages=messages_with_ending_prompt_and_scenario,
                     stream=True,
                 ):
-                    response_json += response.choices[0].delta.get("content", "")
+                    response_json += response.choices[0].delta.content or ""
 
                 # Parse ending date action
                 print("\n\nResponse:", response_json)
@@ -313,12 +316,12 @@ elif prompt := st.chat_input("What is up?"):
                     }]
                 modified_messages_with_scenario = add_scenario_to_messages(modified_messages, plot['scenarios'][st.session_state.act]['setting']['opponent_description'], st.session_state.act_position)
 
-                for response in openai.ChatCompletion.create(
+                for response in client.chat.completions.create(
                     model=st.session_state["openai_model"],
                     messages=modified_messages_with_scenario,
                     stream=True,
                 ):
-                    invitation_to_next_act += response.choices[0].delta.get("content", "")
+                    invitation_to_next_act += response.choices[0].delta.content or ""
                     invitation_placeholder.markdown(invitation_to_next_act + "▌")
 
                 invitation_placeholder.markdown(invitation_to_next_act)
@@ -349,8 +352,9 @@ if st.session_state.continue_date == True:
 
     if st.button("No"):
         print("Stop")
-        end_conversation(plot, st.session_state.act, current_turn_count)
         st.session_state.conversation_end = True
+        st.session_state.continue_date = False
+        end_conversation(plot, st.session_state.act, current_turn_count)
         # Need to refresh current state
         st.experimental_rerun()
 
